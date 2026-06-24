@@ -1,0 +1,10 @@
+-r requirements.in
+
+# Dependency management and compilation tooling
+pip-tools
+
+# Git automated hooks architecture
+pre-commit
+
+# py-test for automated checks
+pytest

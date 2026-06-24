@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml          # Verifies config.json/outline.json syntax
+      - id: check-json
+      - id: end-of-file-fixer   # Normalizes whitespace trailing layouts
+      - id: trailing-whitespace
+      - id: check-added-large-files
+      - id: detect-private-key  # Safety check to prevent committing api keys/tokens
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      - id: ruff        # Linter: Catches unused variables, dead code, logic gaps
+        args: [ --fix ]
+      - id: ruff-format # Formatter: Standardizes code structure automatically
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        # Scans generated sections for spelling mistakes.
+        # Exclude python packages if needed.
+        args: [ "--skip=*.json,*.py" ]
