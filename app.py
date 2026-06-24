@@ -1,18 +1,24 @@
 import streamlit as st
 import base64
 import logging
+import json
+import os
 from engine import run_compliance_audit, CONFIG_CHECKS
+from utils import preprocess_image_for_ai
 
-# -------------------------------------------------------------
-# LOGGING CONFIGURATION
-# -------------------------------------------------------------
 logger = logging.getLogger("StreamlitUI")
-# Using basicConfig here will attach to the existing root logger setup by engine.py
+
+# Load the dynamic UI schema from environment
+try:
+    APP_SCHEMA = json.loads(os.getenv("APPLICATION_SCHEMA", "[]"))
+except Exception as e:
+    logger.error(f"Failed to load APPLICATION_SCHEMA: {e}")
+    APP_SCHEMA = []
 
 st.set_page_config(page_title="Dynamic TTB Verification Portal", layout="wide")
 
 st.title("Alcohol Label Compliance Verifier")
-st.markdown("Automated extensible verification framework with per-field explanation routing.")
+st.markdown("Automated extensible verification framework for TTB COLA label validation.")
 
 with st.sidebar:
     st.header("Audit Configuration")
@@ -27,42 +33,70 @@ with st.sidebar:
 st.header("1. Application Metadata & Target Visuals")
 col1, col2 = st.columns(2)
 
+# -------------------------------------------------------------
+# DYNAMIC METADATA INPUT PORTION
+# -------------------------------------------------------------
 with col1:
-    st.subheader("Application Metadata")
-    brand_name = st.text_input("Brand Name", placeholder="e.g., OLD TOM DISTILLERY")
-    alcohol_content = st.text_input("Alcohol Content (ABV)", placeholder="e.g., 45% Alc./Vol.")
-    class_type = st.text_input("Class / Type Designation", placeholder="e.g., Kentucky Straight Bourbon Whiskey")
+    st.subheader("Application Data")
+    
+    # Toggle for Manual vs Upload
+    manual_entry = st.checkbox("Manually enter application details", value=True, help="Uncheck to upload a JSON application file.")
+    
+    form_payload = {}
+    
+    if manual_entry:
+        # Dynamically draw text inputs based on the .env schema
+        for field in APP_SCHEMA:
+            form_payload[field["id"]] = st.text_input(
+                label=field["label"], 
+                placeholder=field.get("placeholder", "")
+            )
+    else:
+        # Provide a file uploader for the application data
+        app_file = st.file_uploader("Upload Application File (.json)", type=["json"])
+        if app_file is not None:
+            try:
+                form_payload = json.load(app_file)
+                st.success("Application data successfully extracted.")
+                with st.expander("View Extracted Data"):
+                    st.json(form_payload)
+            except Exception as e:
+                st.error("Failed to parse JSON application file.")
+                logger.error(f"JSON Parsing error: {e}")
 
+# -------------------------------------------------------------
+# LABEL ARTIFACT UPLOAD PORTION
+# -------------------------------------------------------------
 with col2:
     st.subheader("Label Artifact")
-    uploaded_files = st.file_uploader("Upload Label Images", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
+    uploaded_labels = st.file_uploader("Upload Label Images", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
 
+# -------------------------------------------------------------
+# EXECUTION TRIGGER
+# -------------------------------------------------------------
 if st.button("Run Verification Audit", type="primary"):
-    if not brand_name or not uploaded_files:
+    # Check if we have both data and images
+    has_data = any(form_payload.values()) if manual_entry else bool(form_payload)
+    
+    if not has_data or not uploaded_labels:
         logger.warning("Audit attempted without required form data or image artifacts.")
-        st.error("Please provide validation metadata and submit target objects.")
+        st.error("Please provide validation metadata (either typed or uploaded) and submit at least one label image.")
     else:
-        logger.info(f"Audit Initiated. Batch size: {len(uploaded_files)} file(s). Deep Dive: {deep_dive}")
+        logger.info(f"Audit Initiated. Batch size: {len(uploaded_labels)} file(s). Deep Dive: {deep_dive}")
         st.divider()
         st.header("2. System Compliance Report Output")
         
-        form_payload = {
-            "brand_name": brand_name,
-            "alcohol_content": alcohol_content,
-            "class_type": class_type
-        }
-        
         label_lookup = {c["id"]: c["label"] for c in CONFIG_CHECKS}
         
-        for uploaded_file in uploaded_files:
+        for uploaded_file in uploaded_labels:
             logger.info(f"Processing frontend artifact: {uploaded_file.name}")
             st.subheader(f"Results for: {uploaded_file.name}")
             
             with st.spinner(f"Running automated evaluations on {uploaded_file.name}..."):
-                bytes_data = uploaded_file.read()
-                img_b64 = base64.b64encode(bytes_data).decode("utf-8")
-                
+                img_b64 = preprocess_image_for_ai(uploaded_file)
+
                 try:
+                    # The engine dynamically compares whatever is in form_payload against the .env checks!
                     report = run_compliance_audit(img_b64, form_payload, deep_dive=deep_dive)
                     
                     if not report.is_legible:
