@@ -42,5 +42,5 @@ def boost_contrast(img: ImageFile.ImageFile, contrast: float = 1.5):
 def encode_for_transfer(img: ImageFile.ImageFile):
     buffered = io.BytesIO()
     # Save as JPEG to keep the payload size small for fast API transmission
-    img.save(buffered, format="JPEG", quality=95) 
+    img.save(buffered, format="JPEG", quality=95)
     return base64.b64encode(buffered.getvalue()).decode("utf-8")

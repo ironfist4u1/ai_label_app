@@ -3,14 +3,11 @@ from .engine import (
     ComplianceReport,
 )
 
-from .application import (
-    SidebarConfig
-)
+from .application import SidebarConfig
 
 
 __all__ = (
     "EvaluationResult",
     "ComplianceReport",
-
     "SidebarConfig",
 )

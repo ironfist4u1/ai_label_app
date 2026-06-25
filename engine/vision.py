@@ -20,11 +20,13 @@ def call_vision_api(
     """
     client = OpenAI(base_url=env.config.AI_BASE_URL, api_key=env.config.AI_API_KEY)
 
-    rules_summary = "\n".join([
-        f"- {c['id']}: {c['description']}"
-        for c in active_checks
-        if not c.get("deep_dive_only") or deep_dive
-    ])
+    rules_summary = "\n".join(
+        [
+            f"- {c['id']}: {c['description']}"
+            for c in active_checks
+            if not c.get("deep_dive_only") or deep_dive
+        ]
+    )
     beverage_category = form_data.get("rules_category", "Distilled Spirits")
     mode_context = (
         f"Category: {beverage_category}\n"
@@ -33,16 +35,23 @@ def call_vision_api(
     )
 
     user_content: List[Dict[str, Any]] = [
-        {"type": "text", "text": f"Form Data: {json.dumps(form_data)}\n\n{mode_context}"},
+        {
+            "type": "text",
+            "text": f"Form Data: {json.dumps(form_data)}\n\n{mode_context}",
+        },
     ]
     for img_b64 in images_b64:
-        user_content.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"},
-        })
+        user_content.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"},
+            }
+        )
 
     tokens_key = "DEEP_DIVE_MAX_TOKENS" if deep_dive else "QUICK_MODE_MAX_TOKENS"
-    logger.info(f"Calling Vision API. Images: {len(images_b64)}, Mode: {'Deep Dive' if deep_dive else 'Quick'}.")
+    logger.info(
+        f"Calling Vision API. Images: {len(images_b64)}, Mode: {'Deep Dive' if deep_dive else 'Quick'}."
+    )
 
     try:
         response = client.beta.chat.completions.parse(

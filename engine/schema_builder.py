@@ -11,11 +11,15 @@ def build_extraction_model(active_checks: List[Dict[str, Any]]):
     fields = {
         "is_legible": (
             bool,
-            Field(description="False if the submitted image is illegible or too low quality to evaluate."),
+            Field(
+                description="False if the submitted image is illegible or too low quality to evaluate."
+            ),
         ),
         "legibility_remarks": (
             str,
-            Field(description="Explanation of why the image is unreadable, if applicable."),
+            Field(
+                description="Explanation of why the image is unreadable, if applicable."
+            ),
         ),
     }
     for check in active_checks:

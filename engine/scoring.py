@@ -21,7 +21,9 @@ def calculate_score(
     fields_state: Dict[str, EvaluationResult] = {}
 
     if not ai_result.is_legible:
-        logger.warning(f"Image illegible: {ai_result.legibility_remarks}. Score set to 0.")
+        logger.warning(
+            f"Image illegible: {ai_result.legibility_remarks}. Score set to 0."
+        )
         for check in active_checks:
             fields_state[check["id"]] = EvaluationResult(
                 matched=False, explanation="Skipped: image illegible."

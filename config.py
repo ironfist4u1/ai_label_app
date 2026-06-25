@@ -9,7 +9,7 @@ import logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -48,8 +48,8 @@ class Config:
         EnvTuple = namedtuple(
             typename="EnvConfigTuple",
             field_names=field_names,
-            defaults=None,          # no defaults
-            rename=False,           # raise on invalid names
+            defaults=None,  # no defaults
+            rename=False,  # raise on invalid names
         )
 
         cls._env_tuple = EnvTuple(**cls._env_dict)
@@ -79,9 +79,13 @@ class Config:
         config_checks: List[Dict[str, Any]] = []
         try:
             config_checks = json.loads(self.get("VERIFICATION_CHECKS", "[]"))
-            logger.info(f"Successfully loaded {len(config_checks)} dynamic verification rules from environment.")
+            logger.info(
+                f"Successfully loaded {len(config_checks)} dynamic verification rules from environment."
+            )
         except Exception as e:
-            logger.critical(f"Failed to parse VERIFICATION_CHECKS from environment. Check JSON formatting. Error: {e}")
+            logger.critical(
+                f"Failed to parse VERIFICATION_CHECKS from environment. Check JSON formatting. Error: {e}"
+            )
 
         if len(config_checks) > 0:
             self._parsed_compliance_checks = config_checks
@@ -93,9 +97,13 @@ class Config:
         application_schema: List[Dict[str, Any]] = []
         try:
             application_schema = json.loads(self.get("APPLICATION_SCHEMA", "[]"))
-            logger.info(f"Successfully loaded {len(application_schema)} dynamic verification rules from environment.")
+            logger.info(
+                f"Successfully loaded {len(application_schema)} dynamic verification rules from environment."
+            )
         except Exception as e:
-            logger.critical(f"Failed to parse APPLICATION_SCHEMA from environment. Check JSON formatting. Error: {e}")
+            logger.critical(
+                f"Failed to parse APPLICATION_SCHEMA from environment. Check JSON formatting. Error: {e}"
+            )
 
         if len(application_schema) > 0:
             self._parsed_application_schema = application_schema
