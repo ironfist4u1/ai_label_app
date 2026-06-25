@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Generator, Any
 from config import env
 from datatypes import ComplianceReport, SidebarConfig
 from streamlit.runtime.uploaded_file_manager import UploadedFile
@@ -15,17 +15,16 @@ def run_batch_compliance_audit(
     uploaded_labels: List[UploadedFile],
     form_data: List[dict],
     sidebar_config: SidebarConfig,
-) -> List[ComplianceReport]:
-    completed_evaluations: List[ComplianceReport] = []
+) -> Generator[ComplianceReport, Any, None]:
     for application in form_data:
         target_filenames = application.get("associated_files", [])
         matched_files = [f for f in uploaded_labels if f.name in target_filenames]
-        completed_evaluations.append(run_compliance_audit(
+        report = run_compliance_audit(
             matched_files,
             application,
             sidebar_config,
-        ))
-    return completed_evaluations
+        )
+        yield report
 
 
 def run_compliance_audit(
@@ -38,11 +37,14 @@ def run_compliance_audit(
     Each step is handled by a dedicated module; this function just wires them together.
     """
     beverage_category = form_data.get("rules_category", "Distilled Spirits")
-    logger.info(f"Audit starting. Category: '{beverage_category}' | Deep Dive: {sidebar_config.deep_dive}")
+    logger.info(
+        f"Audit starting. Category: '{beverage_category}' | Deep Dive: {sidebar_config.deep_dive}"
+    )
 
     # 1. Filter rules for this beverage category
     active_checks = [
-        c for c in env.configured_compliance_checks()
+        c
+        for c in env.configured_compliance_checks()
         if "ALL" in c.get("applicable_categories", ["ALL"])
         or beverage_category in c.get("applicable_categories", [])
     ]
@@ -54,16 +56,26 @@ def run_compliance_audit(
 
     # prepare images for processing
     images_b64 = []
-    images_b64.extend([
-        preprocess_image_for_ai(uploaded_file, sidebar_config.preprocess_size, sidebar_config.preprocess_contrast)
-        for uploaded_file in uploaded_labels
-    ])
+    images_b64.extend(
+        [
+            preprocess_image_for_ai(
+                uploaded_file,
+                sidebar_config.preprocess_size,
+                sidebar_config.preprocess_contrast,
+            )
+            for uploaded_file in uploaded_labels
+        ]
+    )
 
     # 3. Call the Vision API
-    ai_result = call_vision_api(images_b64, form_data, active_checks, sidebar_config.deep_dive, extraction_model)
+    ai_result = call_vision_api(
+        images_b64, form_data, active_checks, sidebar_config.deep_dive, extraction_model
+    )
 
     # 4. Score results deterministically
-    score, fields_state = calculate_score(ai_result, active_checks, sidebar_config.deep_dive)
+    score, fields_state = calculate_score(
+        ai_result, active_checks, sidebar_config.deep_dive
+    )
 
     # 5. Assemble and return the final report
     return ComplianceReport(
