@@ -124,13 +124,16 @@ class ComplianceApp:
         with input_slot:
             sidebar_config: SidebarConfig = render_sidebar()
             st.header("1. Application Metadata & Artifacts")
+            manual_entry = st.checkbox(
+                "Manually enter application details", value=False
+            )
             col1, col2 = st.columns(2)
 
             with col1:
                 if sidebar_config.batch_mode:
-                    form_payload = render_batch_form()
+                    form_payload = render_batch_form(manual_entry)
                 else:
-                    form_payload = render_form()
+                    form_payload = render_form(manual_entry)
             with col2:
                 uploaded_labels = render_upload()
 

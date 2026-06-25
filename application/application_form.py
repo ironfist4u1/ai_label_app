@@ -13,7 +13,7 @@ def _temp_fields() -> Dict[str, str]:
     return {field["id"]: "N/A" for field in env.configured_application_schema()}
 
 
-def render_form() -> Dict[str, Any]:
+def render_form(manual_entry) -> Dict[str, Any]:
     """
     Single-application entry.
     Handles the manual / JSON-upload toggle internally.
@@ -21,7 +21,6 @@ def render_form() -> Dict[str, Any]:
     """
     st.subheader("Application Data")
     form_payload: Dict[str, Any] = {}
-    manual_entry = st.checkbox("Manually enter application details", value=True)
 
     if manual_entry:
         for field in env.configured_application_schema():
@@ -44,7 +43,7 @@ def render_form() -> Dict[str, Any]:
     return form_payload
 
 
-def render_batch_form() -> List[Dict[str, Any]]:
+def render_batch_form(manual_entry) -> List[Dict[str, Any]]:
     """
     Multi-application entry.
     Handles the manual / JSON-upload toggle internally.
@@ -52,7 +51,6 @@ def render_batch_form() -> List[Dict[str, Any]]:
     """
     st.subheader("Application Data")
     form_payload: List[Dict[str, Any]] = []
-    manual_entry = st.checkbox("Manually enter application details", value=True)
 
     if manual_entry:
         number_of_apps = st.number_input(
@@ -60,16 +58,17 @@ def render_batch_form() -> List[Dict[str, Any]]:
         )
         for index in range(number_of_apps):
             entry: Dict[str, Any] = {}
-            for field in env.configured_application_schema():
-                entry[field["id"]] = st.text_input(
-                    label=f"App({index + 1}): {field['label']}",
-                    placeholder=field.get("placeholder", ""),
+            with st.expander(f"Application({index + 1})"):
+                for field in env.configured_application_schema():
+                    entry[field["id"]] = st.text_input(
+                        label=f"App({index + 1}): {field['label']}",
+                        placeholder=field.get("placeholder", ""),
+                    )
+                entry["associated_files"] = st.text_input(
+                    label=f"App({index + 1}): Associated Files",
+                    placeholder="[label_file_name.png, label_file_name.png]",
                 )
-            entry["associated_files"] = st.text_input(
-                label=f"App({index + 1}): Associated Files",
-                placeholder="[label_file_name.png, label_file_name.png]",
-            )
-            form_payload.append(entry)
+                form_payload.append(entry)
     else:
         defaults = _temp_fields()
         app_files = st.file_uploader(
