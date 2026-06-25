@@ -2,6 +2,7 @@ import logging
 import streamlit as st
 from config import env
 from datatypes import ComplianceReport
+from typing import List
 
 logger = logging.getLogger("UI.Results")
 
@@ -10,6 +11,13 @@ _LABEL_LOOKUP: dict = {
     c["id"]: c["label"]
     for c in env.configured_compliance_checks()
 }
+
+
+def render_batch_results(reports: List[ComplianceReport]):
+    for report in reports:
+        pass_fail = "**Status:** Passed" if report.confidence_score >= 85 else "**Status:** Failed"
+        with st.expander(f"View {pass_fail} Results for: {report.application.get("brand_name")}"):
+            render_results(report)
 
 
 def render_results(report: ComplianceReport) -> None:

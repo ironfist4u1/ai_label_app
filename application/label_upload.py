@@ -1,8 +1,9 @@
 from typing import List
 import streamlit as st
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 
-def render_upload() -> List:
+def render_upload() -> List[UploadedFile]:
     """
     Renders the label image upload section.
     Returns a list of uploaded file objects.

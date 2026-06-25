@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 from pydantic import BaseModel, Field
 
 
@@ -12,3 +12,4 @@ class ComplianceReport(BaseModel):
     legibility_remarks: str
     confidence_score: int
     matched_fields: Any
+    application: Dict
