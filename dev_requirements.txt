@@ -104,7 +104,9 @@ packaging==26.2
 pandas==3.0.3
     # via streamlit
 pillow==12.2.0
-    # via streamlit
+    # via
+    #   -r requirements.in
+    #   streamlit
 pip-tools==7.5.3
     # via -r dev_requirements.in
 platformdirs==4.10.0
