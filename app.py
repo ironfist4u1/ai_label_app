@@ -25,6 +25,72 @@ class ComplianceApp:
             st.session_state.audit_results = []
         if "brand_name_target" not in st.session_state:
             st.session_state.brand_name_target = ""
+        if "settings_overrides" not in st.session_state:
+            st.session_state.settings_overrides = {}
+
+        # Apply any active session overrides to the config singleton on every render
+        # cycle so the engine always reads the correct values.
+        for key, value in st.session_state.settings_overrides.items():
+            env.override(key, value)
+
+    def render_settings(self):
+        """
+        Frontend override panel for AI connection settings.
+        Values entered here take precedence over .env for the current session.
+        Placeholders show the active .env default so users know what they're overriding.
+        """
+        overrides = st.session_state.settings_overrides
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            url_val = st.text_input(
+                "AI Base URL",
+                value=overrides.get("AI_BASE_URL", ""),
+                placeholder=env.get("AI_BASE_URL", "Not set in .env"),
+                help="Overrides AI_BASE_URL from .env for this session.",
+            )
+        with c2:
+            token_val = st.text_input(
+                "AI Access Token",
+                value=overrides.get("AI_API_KEY", ""),
+                type="password",
+                placeholder="●●●●●●●● (from .env)"
+                if env.get("AI_API_KEY")
+                else "Not set in .env",
+                help="Overrides AI_API_KEY. Stored in session only — never written to disk.",
+            )
+        with c3:
+            model_val = st.text_input(
+                "Model Name",
+                value=overrides.get("AI_MODEL_NAME", ""),
+                placeholder=env.get("AI_MODEL_NAME", "Not set in .env"),
+                help="Overrides AI_MODEL_NAME from .env for this session.",
+            )
+
+        col_apply, col_reset, col_status = st.columns([1, 1, 4])
+        with col_apply:
+            if st.button("💾 Apply", use_container_width=True):
+                for key, val in [
+                    ("AI_BASE_URL", url_val),
+                    ("AI_API_KEY", token_val),
+                    ("AI_MODEL_NAME", model_val),
+                ]:
+                    if val:
+                        st.session_state.settings_overrides[key] = val
+                    else:
+                        st.session_state.settings_overrides.pop(key, None)
+                st.rerun()
+        with col_reset:
+            if st.button("↩ Reset to .env", use_container_width=True):
+                st.session_state.settings_overrides.clear()
+                env.clear_overrides()
+                st.rerun()
+        with col_status:
+            active = list(overrides.keys())
+            if active:
+                st.info(f"Session overrides active: {', '.join(active)}", icon="⚙️")
+            else:
+                st.caption("Using .env defaults for all settings.")
 
     def process_audit(
         self, uploaded_labels, form_payload, sidebar_config: SidebarConfig
@@ -269,6 +335,8 @@ class ComplianceApp:
                         f"- **Categories({','.join(categories)}) - {label}**: {desc}\n"
                     )
                 st.markdown(markdown_str)
+            with st.expander("⚙️ Engine Settings", expanded=False):
+                self.render_settings()
 
         with input_slot:
             sidebar_config: SidebarConfig = render_sidebar()

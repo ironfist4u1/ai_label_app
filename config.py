@@ -1,4 +1,5 @@
 # env_config.py
+import os
 from copy import deepcopy
 from collections import namedtuple
 from typing import Any, Dict, List
@@ -30,6 +31,10 @@ class Config:
     _env_dict: Dict[str, str] = {}
     _parsed_compliance_checks: List[Dict[str, Any]] = []
     _parsed_application_schema: List[Dict[str, Any]] = []
+    # Runtime overrides: take precedence over .env values.
+    # Note: class-level, so shared across the process.
+    # Only changes settings for current interface.
+    _overrides: Dict[str, str] = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -60,8 +65,37 @@ class Config:
         return self._env_tuple
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Safe get similar to dict.get()"""
+        """Runtime overrides take precedence over .env values."""
+        if key in self._overrides:
+            return self._overrides[key]
         return getattr(self._env_tuple, key, default)
+
+    def override(self, key: str, value: str | None):
+        """
+        Set or clear a runtime override for this session.
+        Also writes to os.environ so engine code using os.getenv() picks it up.
+        Pass None or empty string to clear the override and restore the .env default.
+        """
+        if value:
+            self._overrides[key] = value
+            os.environ[key] = value
+        else:
+            self._overrides.pop(key, None)
+            original = self._env_dict.get(key)
+            if original is not None:
+                os.environ[key] = original
+            elif key in os.environ:
+                del os.environ[key]
+
+    def clear_overrides(self):
+        """Remove all runtime overrides and restore .env values in os.environ."""
+        for key in list(self._overrides.keys()):
+            original = self._env_dict.get(key)
+            if original is not None:
+                os.environ[key] = original
+            elif key in os.environ:
+                del os.environ[key]
+        self._overrides.clear()
 
     def as_dict(self) -> Dict[str, str]:
         """Return a copy of the underlying dictionary."""
