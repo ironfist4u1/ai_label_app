@@ -91,6 +91,14 @@ class Config:
             self._parsed_compliance_checks = config_checks
         return deepcopy(config_checks)
 
+    def get_active_compliance_checks(self, beverage_category):
+        return [
+            c
+            for c in env.configured_compliance_checks()
+            if "ALL" in c.get("applicable_categories", ["ALL"])
+            or beverage_category in c.get("applicable_categories", [])
+        ]
+
     def configured_application_schema(self):
         if len(self._parsed_application_schema) > 0:
             return deepcopy(self._parsed_application_schema)

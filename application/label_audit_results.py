@@ -4,30 +4,18 @@ from config import env
 from datatypes import ComplianceReport
 
 logger = logging.getLogger("UI.Results")
-
-# Built once at import time from the shared config.
 _LABEL_LOOKUP: dict = {c["id"]: c["label"] for c in env.configured_compliance_checks()}
 
 
-def render_results(report: ComplianceReport):
-    """
-    Renders the full compliance report output from an audit run.
-    Returns True if the user clicked the 'Rerun Application' button.
-    """
+def render_results(report: ComplianceReport) -> None:
+    """Purely renders the compliance report output without managing state or actions."""
     if not report.is_legible:
         st.error(f"**Image Rejected:** {report.legibility_remarks}")
-        # Allow them to rerun even if it failed legibility (in case it was an AI hallucination)
+        return
 
     score = report.confidence_score
     color = "green" if score >= 85 else "orange" if score >= 50 else "red"
-
-    # Use columns to align the score and the rerun button cleanly on the same row
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown(f"**Confidence Score:** :{color}[**{score} / 100**]")
-    with col2:
-        # TODO replace space, for now add padding.
-        st.write("")
+    st.markdown(f"**Confidence Score:** :{color}[**{score} / 100**]")
 
     st.subheader("Field Audit Breakdown")
     for field_id in report.matched_fields.model_fields.keys():

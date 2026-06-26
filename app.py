@@ -1,6 +1,10 @@
 import logging
 import streamlit as st
-from engine import run_compliance_audit, run_batch_compliance_audit
+from engine import (
+    run_compliance_audit,
+    run_batch_compliance_audit,
+    rerun_failed_checks,
+)
 from application import (
     render_sidebar,
     render_form,
@@ -16,7 +20,6 @@ st.set_page_config(page_title="Dynamic TTB Verification Portal", layout="wide")
 
 class ComplianceApp:
     def __init__(self):
-        """Initialize session state to preserve data across UI reruns."""
         if "audit_results" not in st.session_state:
             st.session_state.audit_results = []
         if "brand_name_target" not in st.session_state:
@@ -48,11 +51,6 @@ class ComplianceApp:
         )
 
         st.session_state.brand_name_target = brand_name
-        logger.info(
-            f"Audit initiated. Images: {len(uploaded_labels)} | Deep Dive: {sidebar_config.deep_dive}"
-        )
-
-        # Clear previous results before starting a new run
         st.session_state.audit_results = []
 
         try:
@@ -76,62 +74,187 @@ class ComplianceApp:
                     progress_bar.progress(
                         (i + 1) / total, text=f"Completed {i + 1} of {total}"
                     )
-
                 progress_bar.empty()
-
-            logger.info(f"Results successfully stored for '{brand_name}'")
 
         except Exception as e:
             logger.error(f"Engine fault on '{brand_name}': {str(e)}", exc_info=True)
             st.error(f"Engine Fault encountered on {brand_name}: {str(e)}")
 
     def execute_rerun(
-        self, uploaded_labels, form_payload, sidebar_config, target_index=None
+        self,
+        uploaded_labels,
+        form_payload,
+        sidebar_config,
+        target_index=None,
+        only_failed=False,
     ):
-        """
-        Controller method to handle state updates when a rerun is triggered.
-        If target_index is None, it reruns the entire session (Single or Full Batch).
-        If target_index is provided, it reruns ONLY that specific item in the batch array.
-        """
+        """Controller to handle state updates for full reruns or targeted failure reruns."""
         if target_index is None:
-            # Full application or full batch rerun re-uses the primary execution method
-            self.process_audit(uploaded_labels, form_payload, sidebar_config)
-        else:
-            # Targeted batch item rerun isolates a single payload
-            single_payload = form_payload[target_index]
-            try:
-                new_report = next(
-                    run_batch_compliance_audit(
-                        uploaded_labels, [single_payload], sidebar_config
+            if only_failed:
+                if sidebar_config.batch_mode:
+                    for i, report in enumerate(st.session_state.audit_results):
+                        app_data = form_payload[i]
+                        target_filenames = app_data.get("associated_files", [])
+                        matched_files = [
+                            f for f in uploaded_labels if f.name in target_filenames
+                        ]
+                        st.session_state.audit_results[i] = rerun_failed_checks(
+                            matched_files, app_data, sidebar_config, report
+                        )
+                else:
+                    st.session_state.audit_results[0] = rerun_failed_checks(
+                        uploaded_labels,
+                        form_payload,
+                        sidebar_config,
+                        st.session_state.audit_results[0],
                     )
-                )
-                # Splice the updated report back into the exact spot in the state array
-                st.session_state.audit_results[target_index] = new_report
+            else:
+                self.process_audit(uploaded_labels, form_payload, sidebar_config)
+        else:
+            single_payload = form_payload[target_index]
+            target_filenames = single_payload.get("associated_files", [])
+            matched_files = [f for f in uploaded_labels if f.name in target_filenames]
+
+            try:
+                if only_failed:
+                    st.session_state.audit_results[target_index] = rerun_failed_checks(
+                        matched_files,
+                        single_payload,
+                        sidebar_config,
+                        st.session_state.audit_results[target_index],
+                    )
+                else:
+                    new_report = next(
+                        run_batch_compliance_audit(
+                            matched_files, [single_payload], sidebar_config
+                        )
+                    )
+                    st.session_state.audit_results[target_index] = new_report
             except Exception as e:
                 logger.error(f"Engine fault on targeted rerun: {str(e)}", exc_info=True)
-                st.error(f"Engine Fault encountered during targeted rerun: {str(e)}")
+                st.error(f"Engine Fault encountered: {str(e)}")
 
-        # Force a UI refresh to display the newly generated state data
         st.rerun()
 
-    def render(self):
-        """Paints the UI using containers to break the top-to-bottom rigidness."""
+    def render_results_area(
+        self, results_slot, uploaded_labels, form_payload, sidebar_config
+    ):
+        """Builds the results UI, including rerun controls."""
+        with results_slot:
+            if not st.session_state.audit_results:
+                return
 
-        # 1. Define UI Slots
+            st.divider()
+            st.header("2. System Compliance Report Output")
+
+            # --- GLOBAL BATCH CONTROLS ---
+            if sidebar_config.batch_mode and len(st.session_state.audit_results) > 1:
+                col1, col2 = st.columns(2)
+                all_passed = all(
+                    report.confidence_score == 100
+                    for report in st.session_state.audit_results
+                )
+                with col1:
+                    if st.button(
+                        "🔄 Rerun Entire Batch",
+                        type="secondary",
+                        use_container_width=True,
+                        disabled=all_passed,
+                    ):
+                        with st.spinner("Rerunning entire batch..."):
+                            self.execute_rerun(
+                                uploaded_labels, form_payload, sidebar_config
+                            )
+                with col2:
+                    if st.button(
+                        "🎯 Rerun All Failed Checks",
+                        type="primary",
+                        use_container_width=True,
+                        disabled=all_passed,
+                    ):
+                        with st.spinner(
+                            "Retesting failures across all applications..."
+                        ):
+                            self.execute_rerun(
+                                uploaded_labels,
+                                form_payload,
+                                sidebar_config,
+                                only_failed=True,
+                            )
+
+            st.subheader(f"Results for: {st.session_state.brand_name_target}")
+
+            # --- INDIVIDUAL RENDER LOOP ---
+            for i, report in enumerate(st.session_state.audit_results):
+                if not sidebar_config.batch_mode:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("🔄 Rerun Full Application"):
+                            with st.spinner("Rerunning..."):
+                                self.execute_rerun(
+                                    uploaded_labels, form_payload, sidebar_config
+                                )
+                    with col2:
+                        if st.button("🎯 Rerun Failed Checks", type="primary"):
+                            with st.spinner("Retesting failures..."):
+                                self.execute_rerun(
+                                    uploaded_labels,
+                                    form_payload,
+                                    sidebar_config,
+                                    only_failed=True,
+                                )
+                    render_results(report)
+                else:
+                    brand = report.application.get("brand_name", f"Application {i + 1}")
+                    passed = report.confidence_score >= 85
+                    with st.expander(
+                        f"{'✅' if passed else '❌'} {brand}", expanded=not passed
+                    ):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button(
+                                "🔄 Rerun Full App",
+                                key=f"rerun_full_{i}",
+                                disabled=report.confidence_score == 100,
+                            ):
+                                with st.spinner(f"Rerunning {brand}..."):
+                                    self.execute_rerun(
+                                        uploaded_labels,
+                                        form_payload,
+                                        sidebar_config,
+                                        target_index=i,
+                                    )
+                        with col2:
+                            if st.button(
+                                "🎯 Rerun Failed Checks",
+                                key=f"rerun_fail_{i}",
+                                type="primary",
+                                disabled=report.confidence_score == 100,
+                            ):
+                                with st.spinner(f"Retesting failures for {brand}..."):
+                                    self.execute_rerun(
+                                        uploaded_labels,
+                                        form_payload,
+                                        sidebar_config,
+                                        target_index=i,
+                                        only_failed=True,
+                                    )
+
+                        render_results(report)
+
+    def render(self):
         header_slot = st.container()
         instructions_slot = st.container()
         input_slot = st.container()
         action_slot = st.container()
         results_slot = st.container()
 
-        # 2. Paint Header
         with header_slot:
             st.title("Alcohol Label Compliance Verifier")
             st.markdown(
                 "Automated extensible verification framework for TTB COLA label validation."
             )
 
-        # 3. Paint Instructions
         with instructions_slot:
             with st.expander("📖 How to Use This Tool", expanded=True):
                 st.markdown("""
@@ -148,7 +271,6 @@ class ComplianceApp:
                 Click **Run Verification Audit** below the inputs. The AI engine will process your documents and render a detailed compliance breakdown at the bottom of the page.
                 """)
 
-        # 4. Paint Inputs
         with input_slot:
             sidebar_config: SidebarConfig = render_sidebar()
             st.header("1. Application Metadata & Artifacts")
@@ -156,79 +278,26 @@ class ComplianceApp:
                 "Manually enter application details", value=False
             )
             col1, col2 = st.columns(2)
-
             with col1:
-                if sidebar_config.batch_mode:
-                    form_payload = render_batch_form(manual_entry)
-                else:
-                    form_payload = render_form(manual_entry)
+                form_payload = (
+                    render_batch_form(manual_entry)
+                    if sidebar_config.batch_mode
+                    else render_form(manual_entry)
+                )
             with col2:
                 uploaded_labels = render_upload()
 
-        # 5. Paint Action Button
         with action_slot:
-            st.write("")
             if st.button(
                 "Run Verification Audit", type="primary", use_container_width=True
             ):
                 with st.spinner("Processing documents through the AI engine..."):
                     self.process_audit(uploaded_labels, form_payload, sidebar_config)
 
-        with results_slot:
-            if st.session_state.audit_results:
-                st.divider()
-                st.header("2. System Compliance Report Output")
-
-                # Full Batch Rerun Button
-                if (
-                    sidebar_config.batch_mode
-                    and len(st.session_state.audit_results) > 1
-                ):
-                    if st.button("🔄 Rerun Entire Batch", type="secondary"):
-                        with st.spinner("Rerunning entire batch..."):
-                            self.execute_rerun(
-                                uploaded_labels, form_payload, sidebar_config
-                            )
-
-                st.subheader(f"Results for: {st.session_state.brand_name_target}")
-
-                # Render Individual Results
-                for i, report in enumerate(st.session_state.audit_results):
-                    if not sidebar_config.batch_mode:
-                        # Single item rendering
-                        if render_results(report, unique_key="single_run"):
-                            with st.spinner("Rerunning application..."):
-                                self.execute_rerun(
-                                    uploaded_labels, form_payload, sidebar_config
-                                )
-                    else:
-                        # Batch item rendering
-                        brand = report.application.get(
-                            "brand_name", f"Application {i + 1}"
-                        )
-                        passed = report.confidence_score >= 85
-                        with st.expander(
-                            f"{'✅' if passed else '❌'} {brand}", expanded=not passed
-                        ):
-                            rerun_clicked = st.button(
-                                "Rerun Application",
-                                key=f"rerun_btn_batch_item_{i}",
-                                use_container_width=True,
-                                disabled=report.confidence_score == 100,
-                                help="Rerun an application unless it has passed the verifications.",
-                            )
-                            # Listen for the targeted rerun click
-                            if rerun_clicked:
-                                with st.spinner(f"Rerunning {brand}..."):
-                                    # Call the controller method with the specific index
-                                    self.execute_rerun(
-                                        uploaded_labels,
-                                        form_payload,
-                                        sidebar_config,
-                                        target_index=i,
-                                    )
-                            else:
-                                render_results(report)
+        # Cleaner Render call
+        self.render_results_area(
+            results_slot, uploaded_labels, form_payload, sidebar_config
+        )
 
 
 if __name__ == "__main__":
