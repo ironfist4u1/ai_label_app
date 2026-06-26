@@ -63,7 +63,7 @@ def extract_from_pdf(uploaded_file) -> list[dict]:
     # 2. Evaluate Success
     # If we got decent text length, it's a digital PDF. We can parse it.
     if len(raw_text.strip()) > 500:
-        logger.info("PDF recognized as Digital. Parsing via Regex/Rules...")
+        logger.info("PDF recognized as Digital. Parsing via Rules...")
         return _parse_raw_text_to_dict(raw_text)
 
     # 3. AI Fallback Triggered (It's a scanned image)
