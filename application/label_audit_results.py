@@ -9,15 +9,14 @@ logger = logging.getLogger("UI.Results")
 _LABEL_LOOKUP: dict = {c["id"]: c["label"] for c in env.configured_compliance_checks()}
 
 
-def render_results(report: ComplianceReport, unique_key: str) -> bool:
+def render_results(report: ComplianceReport):
     """
     Renders the full compliance report output from an audit run.
     Returns True if the user clicked the 'Rerun Application' button.
     """
     if not report.is_legible:
-        st.error(f"🛑 **Image Rejected:** {report.legibility_remarks}")
+        st.error(f"**Image Rejected:** {report.legibility_remarks}")
         # Allow them to rerun even if it failed legibility (in case it was an AI hallucination)
-        return st.button("🔄 Rerun Application", key=f"rerun_illegible_{unique_key}")
 
     score = report.confidence_score
     color = "green" if score >= 85 else "orange" if score >= 50 else "red"
@@ -27,11 +26,8 @@ def render_results(report: ComplianceReport, unique_key: str) -> bool:
     with col1:
         st.markdown(f"**Confidence Score:** :{color}[**{score} / 100**]")
     with col2:
-        rerun_clicked = st.button(
-            "🔄 Rerun Application",
-            key=f"rerun_btn_{unique_key}",
-            use_container_width=True,
-        )
+        # TODO replace space, for now add padding.
+        st.write("")
 
     st.subheader("Field Audit Breakdown")
     for field_id in report.matched_fields.model_fields.keys():
@@ -46,5 +42,3 @@ def render_results(report: ComplianceReport, unique_key: str) -> bool:
             with st.expander(f"❌ {label}", expanded=True):
                 st.markdown("**Status:** Failed / Discrepancy Found")
                 st.warning(evaluation.explanation)
-
-    return rerun_clicked
