@@ -1,5 +1,17 @@
+#The UI for the application.
 streamlit
+
+# To communicate with the LM/AI tool.
 openai
+
+# For the models
 pydantic
+
+# To load a .env file for configurations.
 python-dotenv
+
+# For image processing and handling.
 pillow
+
+# For pdf extraction.
+pdfplumber

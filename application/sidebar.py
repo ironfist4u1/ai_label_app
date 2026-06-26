@@ -10,6 +10,14 @@ def render_sidebar() -> SidebarConfig:
     """
     with st.sidebar:
         st.header("Audit Configuration")
+        st.subheader("Data Ingestion")
+        ingestion_format = st.selectbox(
+            "Application Data Format",
+            ["JSON Manifest", "PDF Forms", "XML Export", "JPEG Scans"],
+        )
+
+        st.divider()
+        st.subheader("Execution Mode")
         deep_dive = st.checkbox("Enable Deep Dive Mode", value=False)
         batch_mode = st.checkbox("Enable Batch Upload Mode", value=False)
         image_processing = st.checkbox("Enable Image Processing", value=False)
@@ -23,13 +31,14 @@ def render_sidebar() -> SidebarConfig:
             disabled=not image_processing,
         )
         preprocess_size = st.number_input(
-            label="Boost Contrast",
-            value=1500,
+            label="Enlarge photo",
+            value=2500,
             help="Change photo size by raising or lowering this.",
             min_value=100,
-            max_value=2500,
+            max_value=3500,
             disabled=not image_processing,
         )
+
         st.divider()
         st.subheader("Active Registry Checks")
         for check in env.configured_compliance_checks():
@@ -41,6 +50,7 @@ def render_sidebar() -> SidebarConfig:
         deep_dive=deep_dive,
         batch_mode=batch_mode,
         image_processing=image_processing,
+        ingestion_format=ingestion_format,
         preprocess_contrast=preprocess_contrast,
         preprocess_size=preprocess_size,
     )

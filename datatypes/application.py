@@ -8,3 +8,4 @@ class SidebarConfig:
     image_processing: bool = False
     preprocess_contrast: float = 1
     preprocess_size: int = 1500
+    ingestion_format: str = "JSON Manifest"

@@ -95,7 +95,7 @@ class ComplianceApp:
                 if sidebar_config.batch_mode:
                     for i, report in enumerate(st.session_state.audit_results):
                         app_data = form_payload[i]
-                        target_filenames = app_data.get("associated_files", [])
+                        target_filenames = app_data.get("label_files", [])
                         matched_files = [
                             f for f in uploaded_labels if f.name in target_filenames
                         ]
@@ -113,7 +113,7 @@ class ComplianceApp:
                 self.process_audit(uploaded_labels, form_payload, sidebar_config)
         else:
             single_payload = form_payload[target_index]
-            target_filenames = single_payload.get("associated_files", [])
+            target_filenames = single_payload.get("label_files", [])
             matched_files = [f for f in uploaded_labels if f.name in target_filenames]
 
             try:
@@ -272,16 +272,18 @@ class ComplianceApp:
 
         with input_slot:
             sidebar_config: SidebarConfig = render_sidebar()
-            st.header("1. Application Metadata & Artifacts")
+            st.header(
+                f"1. Upload Application & Artifacts ({sidebar_config.ingestion_format})"
+            )
             manual_entry = st.checkbox(
                 "Manually enter application details", value=False
             )
             col1, col2 = st.columns(2)
             with col1:
                 form_payload = (
-                    render_batch_form(manual_entry)
+                    render_batch_form(sidebar_config.ingestion_format, manual_entry)
                     if sidebar_config.batch_mode
-                    else render_form(manual_entry)
+                    else render_form(sidebar_config.ingestion_format, manual_entry)
                 )
             with col2:
                 uploaded_labels = render_upload()

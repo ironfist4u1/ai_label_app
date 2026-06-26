@@ -17,7 +17,7 @@ def run_batch_compliance_audit(
     sidebar_config: SidebarConfig,
 ) -> Generator[ComplianceReport, Any, None]:
     for application in form_data:
-        target_filenames = application.get("associated_files", [])
+        target_filenames = application.get("label_files", [])
         matched_files = [f for f in uploaded_labels if f.name in target_filenames]
         report = run_compliance_audit(
             matched_files,
