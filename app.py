@@ -152,11 +152,30 @@ class ComplianceApp:
             if st.session_state.audit_results:
                 st.divider()
                 st.header("2. System Compliance Report Output")
+
+                # --- NEW: Batch Level Rerun Button ---
+                if (
+                    sidebar_config.batch_mode
+                    and len(st.session_state.audit_results) > 1
+                ):
+                    if st.button("🔄 Rerun Entire Batch", type="secondary"):
+                        with st.spinner("Rerunning entire batch..."):
+                            self.process_audit(
+                                uploaded_labels, form_payload, sidebar_config
+                            )
+                            st.rerun()  # Force a UI refresh to show new data
+
                 st.subheader(f"Results for: {st.session_state.brand_name_target}")
 
                 for i, report in enumerate(st.session_state.audit_results):
                     if not sidebar_config.batch_mode:
-                        render_results(report)
+                        # Pass a unique key for the single item
+                        if render_results(report, unique_key="single_run"):
+                            with st.spinner("Rerunning application..."):
+                                self.process_audit(
+                                    uploaded_labels, form_payload, sidebar_config
+                                )
+                                st.rerun()
                     else:
                         brand = report.application.get(
                             "brand_name", f"Application {i + 1}"
@@ -165,7 +184,24 @@ class ComplianceApp:
                         with st.expander(
                             f"{'✅' if passed else '❌'} {brand}", expanded=not passed
                         ):
-                            render_results(report)
+                            # Listen for the individual rerun click inside the batch
+                            if render_results(report, unique_key=f"batch_item_{i}"):
+                                with st.spinner(f"Rerunning {brand}..."):
+                                    # Extract just this one payload from the batch array
+                                    single_payload = form_payload[i]
+
+                                    # Execute just this one item
+                                    new_report = next(
+                                        run_batch_compliance_audit(
+                                            uploaded_labels,
+                                            [single_payload],
+                                            sidebar_config,
+                                        )
+                                    )
+
+                                    # Replace the old report with the new one in state
+                                    st.session_state.audit_results[i] = new_report
+                                    st.rerun()
 
 
 # Instantiate and run the app
