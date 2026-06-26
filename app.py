@@ -13,6 +13,7 @@ from application import (
     render_batch_form,
 )
 from datatypes import SidebarConfig
+from config import env
 
 logger = logging.getLogger("StreamlitUI")
 st.set_page_config(page_title="Dynamic TTB Verification Portal", layout="wide")
@@ -257,19 +258,17 @@ class ComplianceApp:
 
         with instructions_slot:
             with st.expander("📖 How to Use This Tool", expanded=True):
-                st.markdown("""
-                ### **Single Application Mode**
-                1. **Provide Metadata:** Enter the application details manually on the left, or upload a single `.json` application file.
-                2. **Upload Labels:** Drag and drop the front and/or back label images into the upload bin on the right.
-
-                ### **Batch Processing Mode**
-                1. **Enable Batch:** Toggle the "Batch Mode" checkbox in the left sidebar.
-                2. **Provide Manifest:** Upload a `.json` manifest file containing an array of applications (or enter them manually).
-                3. **Upload All Labels:** Drag and drop **all** label images referenced in your manifest into the upload bin on the right.
-
-                ### **Execution**
-                Click **Run Verification Audit** below the inputs. The AI engine will process your documents and render a detailed compliance breakdown at the bottom of the page.
-                """)
+                st.markdown(env.config.INSTRUCTIONS)
+            with st.expander("📖 Label Requirements", expanded=False):
+                markdown_str = "### **Label Checks and Their Prompt**\n\n"
+                for check in env.configured_compliance_checks():
+                    desc = check.get("description")
+                    label = check.get("label")
+                    categories = check.get("applicable_categories")
+                    markdown_str += (
+                        f"- **Categories({','.join(categories)}) - {label}**: {desc}\n"
+                    )
+                st.markdown(markdown_str)
 
         with input_slot:
             sidebar_config: SidebarConfig = render_sidebar()
