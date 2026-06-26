@@ -12,12 +12,15 @@ def render_sidebar() -> SidebarConfig:
         st.header("Audit Configuration")
         deep_dive = st.checkbox("Enable Deep Dive Mode", value=False)
         batch_mode = st.checkbox("Enable Batch Upload Mode", value=False)
+        image_processing = st.checkbox("Enable Image Processing", value=False)
+
         preprocess_contrast = st.number_input(
             label="Boost Contrast",
             value=1.25,
             help="Change photo contrast by raising or lowering this. (0 is dark, 2 is brighter.)",
             min_value=0.00,
             max_value=10.0,
+            disabled=not image_processing,
         )
         preprocess_size = st.number_input(
             label="Boost Contrast",
@@ -25,6 +28,7 @@ def render_sidebar() -> SidebarConfig:
             help="Change photo size by raising or lowering this.",
             min_value=100,
             max_value=2500,
+            disabled=not image_processing,
         )
         st.divider()
         st.subheader("Active Registry Checks")
@@ -36,6 +40,7 @@ def render_sidebar() -> SidebarConfig:
     return SidebarConfig(
         deep_dive=deep_dive,
         batch_mode=batch_mode,
+        image_processing=image_processing,
         preprocess_contrast=preprocess_contrast,
         preprocess_size=preprocess_size,
     )

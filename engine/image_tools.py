@@ -1,11 +1,36 @@
+from typing import List
 from PIL import Image, ImageEnhance, ImageFile
 import io
 import base64
 from pathlib import Path
 from logging import getLogger
+from datatypes import SidebarConfig
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 
 logger = getLogger(__name__)
+
+
+def get_encoded_images(
+    uploaded_labels: List[UploadedFile], sidebar_config: SidebarConfig
+):
+    images_b64 = []
+    if sidebar_config.image_processing:
+        images_b64.extend(
+            [
+                preprocess_image_for_ai(
+                    uploaded_file,
+                    sidebar_config.preprocess_size,
+                    sidebar_config.preprocess_contrast,
+                )
+                for uploaded_file in uploaded_labels
+            ]
+        )
+    else:
+        images_b64.extend(
+            [get_encoded_image(uploaded_file) for uploaded_file in uploaded_labels]
+        )
+    return images_b64
 
 
 def preprocess_image_for_ai(uploaded_file, target_width=1500, contrast=1.5):
@@ -13,6 +38,11 @@ def preprocess_image_for_ai(uploaded_file, target_width=1500, contrast=1.5):
     img = get_image(uploaded_file)
     img = resize_image(img, target_width)
     img = boost_contrast(img, contrast)
+    return encode_for_transfer(img)
+
+
+def get_encoded_image(uploaded_file):
+    img = get_image(uploaded_file)
     return encode_for_transfer(img)
 
 

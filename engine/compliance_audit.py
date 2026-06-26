@@ -6,7 +6,7 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 from .schema_builder import build_extraction_model, build_field_matches_model
 from .vision import call_vision_api
 from .scoring import calculate_score
-from .image_tools import preprocess_image_for_ai
+from .image_tools import get_encoded_images
 
 logger = logging.getLogger("ComplianceEngine")
 
@@ -50,17 +50,7 @@ def run_compliance_audit(
     field_matches_model = build_field_matches_model(active_checks)
 
     # prepare images for processing
-    images_b64 = []
-    images_b64.extend(
-        [
-            preprocess_image_for_ai(
-                uploaded_file,
-                sidebar_config.preprocess_size,
-                sidebar_config.preprocess_contrast,
-            )
-            for uploaded_file in uploaded_labels
-        ]
-    )
+    images_b64 = get_encoded_images(uploaded_labels, sidebar_config)
 
     # 3. Call the Vision API
     ai_result = call_vision_api(
@@ -115,12 +105,7 @@ def rerun_failed_checks(
     # 4. Build a micro-schema strictly for these failures
     extraction_model = build_extraction_model(failed_checks)
 
-    images_b64 = [
-        preprocess_image_for_ai(
-            f, sidebar_config.preprocess_size, sidebar_config.preprocess_contrast
-        )
-        for f in uploaded_labels
-    ]
+    images_b64 = get_encoded_images(uploaded_labels, sidebar_config)
 
     # 5. Call Vision API (The AI is now 100% focused on fixing its mistakes)
     try:
