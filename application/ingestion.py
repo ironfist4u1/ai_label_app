@@ -86,10 +86,10 @@ def _parse_raw_text_to_dict(raw_text: str) -> list[dict]:
             raw_app_data_sections.append(f'"{parsed_key}": "{parsed_value}"')
     raw_app_data = "{\n" + ",\n".join(raw_app_data_sections) + "\n}"
     app_data = json.loads(raw_app_data)
-    if app_data.get(env.config.LABEL_FILE_KEY, ""):
+    if app_data.get(env.get("LABEL_FILE_KEY"), ""):
         # now we can assume if the label files key exists.
-        app_data[env.config.LABEL_FILE_KEY] = json.loads(
-            app_data[env.config.LABEL_FILE_KEY].replace("'", '"')
+        app_data[env.get("LABEL_FILE_KEY")] = json.loads(
+            app_data[env.get("LABEL_FILE_KEY")].replace("'", '"')
         )
     return [app_data]
 

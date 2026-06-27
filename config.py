@@ -6,6 +6,8 @@ from typing import Any, Dict, List
 from dotenv import dotenv_values
 import json
 import logging
+import streamlit as st
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -163,7 +165,7 @@ class Config:
     def get_active_compliance_checks(self, beverage_category):
         return [
             c
-            for c in env.configured_compliance_checks()
+            for c in st.session_state.active_checks_list
             if "ALL" in c.get("applicable_categories", ["ALL"])
             or beverage_category in c.get("applicable_categories", [])
         ]

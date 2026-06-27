@@ -288,7 +288,7 @@ class ComplianceApp:
                 if sidebar_config.batch_mode:
                     for i, report in enumerate(st.session_state.audit_results):
                         app_data = form_payload[i]
-                        target_filenames = app_data.get(env.config.LABEL_FILE_KEY, [])
+                        target_filenames = app_data.get(env.get("LABEL_FILE_KEY"), [])
                         matched_files = [
                             f for f in uploaded_labels if f.name in target_filenames
                         ]
@@ -306,7 +306,7 @@ class ComplianceApp:
                 self.process_audit(uploaded_labels, form_payload, sidebar_config)
         else:
             single_payload = form_payload[target_index]
-            target_filenames = single_payload.get(env.config.LABEL_FILE_KEY, [])
+            target_filenames = single_payload.get(env.get("LABEL_FILE_KEY"), [])
             matched_files = [f for f in uploaded_labels if f.name in target_filenames]
 
             try:
@@ -451,10 +451,10 @@ class ComplianceApp:
 
         with instructions_slot:
             with st.expander("📖 How to Use This Tool", expanded=True):
-                st.markdown(env.config.INSTRUCTIONS)
+                st.markdown(env.get("INSTRUCTIONS"))
             with st.expander("📖 Label Requirements", expanded=False):
                 markdown_str = "### **Label Checks and Their Prompt**\n\n"
-                for check in env.configured_compliance_checks():
+                for check in st.session_state.active_checks_list:
                     desc = check.get("description")
                     label = check.get("label")
                     categories = check.get("applicable_categories")

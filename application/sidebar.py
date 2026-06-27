@@ -1,5 +1,4 @@
 import streamlit as st
-from config import env
 from datatypes import SidebarConfig
 
 
@@ -41,7 +40,7 @@ def render_sidebar() -> SidebarConfig:
 
         st.divider()
         st.subheader("Active Registry Checks")
-        for check in env.configured_compliance_checks():
+        for check in st.session_state.active_checks_list:
             badge = "🔬 Deep Dive" if check.get("deep_dive_only") else "⚡ Core"
             st.caption(
                 f"**{check['label']}** ({badge})\nPenalty: -{check['deduction']} pts"

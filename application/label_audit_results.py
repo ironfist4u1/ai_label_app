@@ -1,10 +1,9 @@
 import logging
 import streamlit as st
-from config import env
 from datatypes import ComplianceReport
 
 logger = logging.getLogger("UI.Results")
-_LABEL_LOOKUP: dict = {c["id"]: c["label"] for c in env.configured_compliance_checks()}
+_LABEL_LOOKUP: dict = {c["id"]: c["label"] for c in st.session_state.active_checks_list}
 
 
 def render_results(report: ComplianceReport) -> None:

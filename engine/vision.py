@@ -19,7 +19,7 @@ def call_vision_api(
     Builds the multimodal payload and calls the Vision API.
     Returns the parsed structured output using the provided Pydantic model.
     """
-    client = OpenAI(base_url=env.config.AI_BASE_URL, api_key=env.config.AI_API_KEY)
+    client = OpenAI(base_url=env.get("AI_BASE_URL"), api_key=env.get("AI_API_KEY"))
 
     rules_summary = "\n".join(
         [
@@ -56,9 +56,9 @@ def call_vision_api(
 
     try:
         response = client.beta.chat.completions.parse(
-            model=env.config.AI_MODEL_NAME,
+            model=env.get("AI_MODEL_NAME"),
             messages=[
-                {"role": "system", "content": env.config.SYSTEM_PROMPT_CORE},
+                {"role": "system", "content": env.get("SYSTEM_PROMPT_CORE")},
                 {"role": "user", "content": user_content},
             ],
             response_format=extraction_model,
@@ -79,12 +79,12 @@ def extract_pdf_vision_api(images_b64: List[str]) -> List[dict]:
     Dynamically generates a Pydantic schema to force the AI to return
     the exact dictionary shape expected by the system.
     """
-    client = OpenAI(base_url=env.config.AI_BASE_URL, api_key=env.config.AI_API_KEY)
+    client = OpenAI(base_url=env.get("AI_BASE_URL"), api_key=env.get("AI_API_KEY"))
     PdfExtractionModel = build_application_fields()
 
     # 2. Assemble the payload
     user_content: List[Dict[str, Any]] = [
-        {"type": "text", "text": env.config.PDF_USER_PROMPT}
+        {"type": "text", "text": env.get("PDF_USER_PROMPT")}
     ]
 
     for img_b64 in images_b64:
@@ -101,9 +101,9 @@ def extract_pdf_vision_api(images_b64: List[str]) -> List[dict]:
 
     try:
         response = client.beta.chat.completions.parse(
-            model=env.config.AI_MODEL_NAME,
+            model=env.get("AI_MODEL_NAME"),
             messages=[
-                {"role": "system", "content": env.config.PDF_SYSTEM_PROMPT},
+                {"role": "system", "content": env.get("PDF_SYSTEM_PROMPT")},
                 {"role": "user", "content": user_content},
             ],
             response_format=PdfExtractionModel,
