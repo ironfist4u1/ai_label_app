@@ -5,6 +5,7 @@ import pdfplumber
 import base64
 import xml.etree.ElementTree as ET
 from engine import extract_pdf_vision_api
+from config import env
 
 logger = logging.getLogger("IngestionPipeline")
 
@@ -85,9 +86,11 @@ def _parse_raw_text_to_dict(raw_text: str) -> list[dict]:
             raw_app_data_sections.append(f'"{parsed_key}": "{parsed_value}"')
     raw_app_data = "{\n" + ",\n".join(raw_app_data_sections) + "\n}"
     app_data = json.loads(raw_app_data)
-    if app_data.get("label_files", ""):
+    if app_data.get(env.config.LABEL_FILE_KEY, ""):
         # now we can assume if the label files key exists.
-        app_data["label_files"] = json.loads(app_data["label_files"].replace("'", '"'))
+        app_data[env.config.LABEL_FILE_KEY] = json.loads(
+            app_data[env.config.LABEL_FILE_KEY].replace("'", '"')
+        )
     return [app_data]
 
 

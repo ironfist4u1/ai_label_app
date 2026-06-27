@@ -86,6 +86,11 @@ class Config:
                 os.environ[key] = original
             elif key in os.environ:
                 del os.environ[key]
+        # Invalidate parsed caches for JSON schema keys so the next read re-parses.
+        if key == "VERIFICATION_CHECKS":
+            self._parsed_compliance_checks = []
+        elif key == "APPLICATION_SCHEMA":
+            self._parsed_application_schema = []
 
     def clear_overrides(self):
         """Remove all runtime overrides and restore .env values in os.environ."""
@@ -95,6 +100,10 @@ class Config:
                 os.environ[key] = original
             elif key in os.environ:
                 del os.environ[key]
+            if key == "VERIFICATION_CHECKS":
+                self._parsed_compliance_checks = []
+            elif key == "APPLICATION_SCHEMA":
+                self._parsed_application_schema = []
         self._overrides.clear()
 
     def as_dict(self) -> Dict[str, str]:

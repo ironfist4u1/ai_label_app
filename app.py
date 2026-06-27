@@ -28,6 +28,11 @@ class ComplianceApp:
         if "settings_overrides" not in st.session_state:
             st.session_state.settings_overrides = {}
 
+        if "active_checks_list" not in st.session_state:
+            st.session_state.active_checks_list = env.configured_compliance_checks()
+        if "active_schema_list" not in st.session_state:
+            st.session_state.active_schema_list = env.configured_application_schema()
+
         # Apply any active session overrides to the config singleton on every render
         # cycle so the engine always reads the correct values.
         for key, value in st.session_state.settings_overrides.items():
@@ -67,13 +72,135 @@ class ComplianceApp:
                 help="Overrides AI_MODEL_NAME from .env for this session.",
             )
 
+        with st.expander("Verification Check Configurations"):
+            checks_layout = [0.2, 1, 2, 1]
+            c0, c1, c2, c3 = st.columns(checks_layout)
+            c0.markdown("##")
+            c1.markdown("**Check Label**")
+            c2.markdown("**Verification Prompt**")
+            c3.markdown("**Category**")
+
+            compliance_checks = {}
+            for i, check in enumerate(st.session_state.active_checks_list):
+                col0, col1, col2, col3 = st.columns(checks_layout)
+                label = check.get("label")
+                desc = check.get("description")
+                categories = check.get("applicable_categories")
+
+                with col0:
+                    if st.button("🗑️", key=f"del_check_{i}"):
+                        st.session_state.active_checks_list.pop(i)
+                        st.rerun()
+
+                with col1:
+                    st.write(label)
+                with col2:
+                    compliance_checks[label] = st.text_input(
+                        label=label, value=desc, label_visibility="collapsed"
+                    )
+                with col3:
+                    st.write(",".join(categories))
+
+            st.divider()
+            st.markdown("### Add New Verification Check")
+            col1, col2, col3 = st.columns([1, 2, 1])
+            new_lbl = col1.text_input("New Label", key="new_check_label")
+            new_desc = col2.text_input("New Desc", key="new_check_desc")
+            new_cat = col3.text_input("Category (e.g. WINE)", key="new_check_cat")
+
+            if st.button("Add Check"):
+                if new_lbl not in [
+                    check.get("label") for check in st.session_state.active_checks_list
+                ]:
+                    st.session_state.active_checks_list.append(
+                        {
+                            "id": new_lbl.lower().replace(" ", "_"),
+                            "label": new_lbl,
+                            "description": new_desc,
+                            "applicable_categories": [new_cat] if new_cat else ["ALL"],
+                            "deduction": 10,  # Default
+                        }
+                    )
+                    st.rerun()
+
+        with st.expander("Application Schema Configurations"):
+            application_schema_label_key = st.text_input(
+                label="Application Label File",
+                value=overrides.get("LABEL_FILE_KEY", ""),
+                placeholder=env.get("LABEL_FILE_KEY", "Not set in .env"),
+                help="Override the label file input key on the application schema.",
+            )
+            checks_layout = [0.2, 1, 2, 1]
+            c0, c1, c2, c3 = st.columns(checks_layout)
+            c0.markdown("##")
+            c1.markdown("**Id**")
+            c2.markdown("**Label**")
+            c3.markdown("**Placeholder**")
+
+            application_schema = {}
+            for i, check in enumerate(st.session_state.active_schema_list):
+                col0, col1, col2, col3 = st.columns(checks_layout)
+                id = check.get("id")
+                label = check.get("label")
+                placeholder = check.get("placeholder")
+
+                with col0:
+                    if st.button("🗑️", key=f"del_schema_{i}"):
+                        st.session_state.active_schema_list.pop(i)
+                        st.rerun()
+
+                with col1:
+                    st.write(id)
+                with col2:
+                    application_schema[id] = st.text_input(
+                        label=label, value=label, label_visibility="collapsed"
+                    )
+                with col3:
+                    st.write(placeholder)
+            st.divider()
+            st.markdown("### Add New Schema Field")
+            col1, col2, col3 = st.columns([1, 2, 1])
+            new_id = col1.text_input("ID", key="new_schema_id")
+            new_label = col2.text_input("Label", key="new_schema_label")
+            new_placeholder = col3.text_input(
+                "Placeholder", key="new_schema_placeholder"
+            )
+
+            if st.button("Add Field"):
+                if new_id not in [
+                    schema.get("id") for schema in st.session_state.active_schema_list
+                ]:
+                    st.session_state.active_schema_list.append(
+                        {
+                            "id": new_id,
+                            "label": new_label,
+                            "placeholder": new_placeholder,
+                        }
+                    )
+                    st.rerun()
+
         col_apply, col_reset, col_status = st.columns([1, 1, 4])
         with col_apply:
             if st.button("💾 Apply", use_container_width=True):
+                configured_checks = st.session_state.active_checks_list
+                for index, check in enumerate(configured_checks):
+                    if check.get("label") in compliance_checks:
+                        check["description"] = compliance_checks["label"]
+                        configured_checks[index] = check
+
+                configured_schema = st.session_state.active_schema_list
+                for index, check in enumerate(configured_schema):
+                    if check.get("id") in compliance_checks:
+                        check["label"] = compliance_checks["id"]
+                        configured_schema[index] = check
+
                 for key, val in [
                     ("AI_BASE_URL", url_val),
                     ("AI_API_KEY", token_val),
                     ("AI_MODEL_NAME", model_val),
+                    ("LABEL_FILE_KEY", application_schema_label_key),
+                    ("VERIFICATION_CHECKS", configured_checks),
+                    ("APPLICATION_SCHEMA", configured_schema),
                 ]:
                     if val:
                         st.session_state.settings_overrides[key] = val
@@ -161,7 +288,7 @@ class ComplianceApp:
                 if sidebar_config.batch_mode:
                     for i, report in enumerate(st.session_state.audit_results):
                         app_data = form_payload[i]
-                        target_filenames = app_data.get("label_files", [])
+                        target_filenames = app_data.get(env.config.LABEL_FILE_KEY, [])
                         matched_files = [
                             f for f in uploaded_labels if f.name in target_filenames
                         ]
@@ -179,7 +306,7 @@ class ComplianceApp:
                 self.process_audit(uploaded_labels, form_payload, sidebar_config)
         else:
             single_payload = form_payload[target_index]
-            target_filenames = single_payload.get("label_files", [])
+            target_filenames = single_payload.get(env.config.LABEL_FILE_KEY, [])
             matched_files = [f for f in uploaded_labels if f.name in target_filenames]
 
             try:

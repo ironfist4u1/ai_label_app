@@ -86,7 +86,7 @@ def render_batch_form(
                         label=f"App({index + 1}): {field['label']}",
                         placeholder=field.get("placeholder", ""),
                     )
-                entry["label_files"] = st.text_input(
+                entry[env.config.LABEL_FILE_KEY] = st.text_input(
                     label=f"App({index + 1}): Label Files",
                     placeholder="[label_file_name.png, label_file_name.png]",
                 )
