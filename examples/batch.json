@@ -1,0 +1,24 @@
+[
+  {
+    "brand_name": "Maker's Mark",
+    "class_type": "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content": "45% Alc./Vol.",
+    "rules_category": "Distilled Spirits",
+    "net_contents": "750 mL",
+    "bottler_address": "Star Hill Farm, Loretto KY, USA",
+    "country_of_origin": "USA",
+    "label_files": ["makers_mark_back_label.jpg", "makers_mark_front_label.jpg"]
+  },
+  {
+    "brand_name": "4.0 Cellars",
+    "class_type": "Mourvedre Wine",
+    "alcohol_content": "14.5% ALC by Vol.",
+    "rules_category": "Wine",
+    "vintage_year": "2013",
+    "net_contents": "750ML",
+    "appellation_of_origin": "4,.0 Cellars, Fredericksburg, Texas",
+    "bottler_address": "Brennan Vineyards, Comanche, Texas",
+    "country_of_origin": "USA",
+    "label_files": ["4_0_cellars_wine.jpg"]
+  }
+]
