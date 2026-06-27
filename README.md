@@ -125,7 +125,8 @@ These assumptions guided the design to be pragmatic while maintaining high accur
 
 | Tool / Library | Purpose in Project | Architectural Benefit |
 | :--- | :--- | :--- |
-| **Streamlit** | Front-end development and UI presentation. | Allowed for rapid prototyping and deployment of a functional, multi-component web application with minimal front-end overhead (Python-only). |
+| **Streamlit Framework** | Full application interface, state management, and orchestration dashboard. | Powers the entire user experience without frontend overhead. Streamlit handles responsive file ingestion (PDF manifests, form metadata, and raw image drops) and binds form configurations dynamically to underlying schemas. It heavily leverages `st.session_state` to sync reactive developer control panels and hot-reload model configuration overrides natively. |
+| **Google AI Studio (Gemini API)** | Production-grade production AI vision and multimodal inference engine. | Utilized for cloud-deployed instances to host the audit platform under a free tier. By targeting Google's official OpenAI Compatibility Layer (`/v1beta/openai/`), the system swaps production targets instantly via standard environment variables (`gemini-3.5-flash`) without structural modifications to the OpenAI client core. |
 | **Pydantic** | Data structure validation and consistency enforcement. | Used extensively to create explicit **data contracts** between the AI model's output and the Python application code, guaranteeing type safety regardless of the underlying API behavior. |
 | **Streamlit Upload/Forms** | Handles file uploads (metadata & labels) and manual data entry. | Provides a native, intuitive UI element that aligns with user expectations for document handling. |
 | **LM Studio / OpenAI SDK** | The multimodal AI backend interface. | Using an abstracted API layer allows the system to be tested quickly in a local sandbox (`LM Studio`) while remaining ready to switch to commercial APIs (OpenAI) without core code changes. |
@@ -134,6 +135,24 @@ These assumptions guided the design to be pragmatic while maintaining high accur
 ### Model Testing & Optimization Notes
 
 The initial integration utilized the **Gemma-4-e4b** model for sandbox testing. Through iterative parameter adjustment, specifically increasing the `max_tokens` limit (`DEEP_DIVE_MAX_TOKENS`), and switching from **Gemma-4-e2b** to **Gemma-4-e4b**. I observed a clear correlation: **increasing context window size and increasing model parameters reduced false negative rates**.
+|
+## Design Philosophy: Embracing Iterative Development (For Reviewer Context)
+
+The inherent modularity of the system—with separate modules for ingestion, core logic, scoring, and reporting—is not merely an organizational choice; it represents a critical **deliberate design decision rooted in rapid prototyping principles.** The goal was to build a structure flexible enough to validate our hypothesis around AI capability before committing to final regulatory prompts.
+
+### Why Modular Design Enables Iterative Prompting
+The TTB compliance space involves nuanced, frequently updated regulations. Before the core logic can be finalized, we must test how specific rules are interpreted by the LLM under various conditions (e.g., "What if the label uses an abbreviation vs. full text?" or "How does the AI distinguish between a front and back view?").
+
+By designing the application around discrete components—each rule defined by its own entry in `VERIFICATION_CHECKS` and driven by a specialized prompt (`SYSTEM_PROMPT_CORE`)—we achieved:
+
+1.  **Isolation of Variables:** When we want to test a new interpretation (e.g., making `ABV Statement` mandatory for *all* beverage types, not just wine), we only modify the rule's entry and its associated prompt **without risking failure in other modules** (like the Warning Text or Net Contents checks).
+2.  **De-Risking Prompt Finalization:** The system allows us to treat the prompts as hypotheses. We can run 10 different versions of a `SYSTEM_PROMPT_CORE` against the same label set and compare the resulting failure modes, allowing us to scientifically solidify the perfect prompt that yields consistent, reliable results before declaring the feature "final."
+
+### The Value Proposition of Modularity
+*   **High Speed Development:** It enabled extremely fast prototyping. If a rule's logic or required textual output changes, only that isolated check needs modification—the rest of the complex pipeline remains untouched.
+*   **Testability and Debugging:** When an error occurs (e.g., the score is too low), the modular architecture immediately tells us if the fault lies in **(A)** Data Ingestion (Bad Input), **(B)** Prompting (AI Misinterpretation), or **(C)** Scoring Logic (Incorrect Deduction). This level of diagnostic detail is essential for a reliable compliance tool.
+
+
 ***
 
 ## Future Roadmap & Architectural Evolution
