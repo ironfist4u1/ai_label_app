@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 from pydantic import Field, create_model
 from datatypes import EvaluationResult
-from config import env
+import streamlit as st
 
 
 def build_extraction_model(active_checks: List[Dict[str, Any]]):
@@ -44,7 +44,7 @@ def build_field_matches_model(active_checks: List[Dict[str, Any]]):
 
 def build_application_fields():
     schema_fields = {}
-    for field in env.configured_application_schema():
+    for field in st.session_state.active_schema_list:
         # Every field is a string, with a default "N/A" if the AI can't read it
         schema_fields[field["id"]] = (
             str,

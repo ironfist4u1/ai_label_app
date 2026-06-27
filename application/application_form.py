@@ -9,7 +9,7 @@ logger = logging.getLogger("UI.Form")
 
 def _get_configured_application_fields() -> Dict[str, str]:
     """Fallback 'N/A' values for any schema keys missing from an uploaded file."""
-    return {field["id"]: "N/A" for field in env.configured_application_schema()}
+    return {field["id"]: "N/A" for field in st.session_state.active_schema_list}
 
 
 def render_form(ingestion_format: str, manual_entry: bool) -> Dict[str, Any]:
@@ -21,7 +21,7 @@ def render_form(ingestion_format: str, manual_entry: bool) -> Dict[str, Any]:
     form_payload: Dict[str, Any] = {}
 
     if manual_entry:
-        for field in env.configured_application_schema():
+        for field in st.session_state.active_schema_list:
             form_payload[field["id"]] = st.text_input(
                 label=field["label"],
                 placeholder=field.get("placeholder", ""),
@@ -81,7 +81,7 @@ def render_batch_form(
         for index in range(number_of_apps):
             entry: Dict[str, Any] = {}
             with st.expander(f"Application({index + 1})"):
-                for field in env.configured_application_schema():
+                for field in st.session_state.active_schema_list:
                     entry[field["id"]] = st.text_input(
                         label=f"App({index + 1}): {field['label']}",
                         placeholder=field.get("placeholder", ""),
