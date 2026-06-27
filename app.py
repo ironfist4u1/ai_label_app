@@ -185,13 +185,13 @@ class ComplianceApp:
                 configured_checks = st.session_state.active_checks_list
                 for index, check in enumerate(configured_checks):
                     if check.get("label") in compliance_checks:
-                        check["description"] = compliance_checks["label"]
+                        check["description"] = compliance_checks[check.get("label")]
                         configured_checks[index] = check
 
                 configured_schema = st.session_state.active_schema_list
                 for index, check in enumerate(configured_schema):
                     if check.get("id") in compliance_checks:
-                        check["label"] = compliance_checks["id"]
+                        check["label"] = compliance_checks[check.get("id")]
                         configured_schema[index] = check
 
                 for key, val in [

@@ -104,7 +104,7 @@ class Config:
         """
         if value:
             self._overrides[key] = value
-            os.environ[key] = value
+            os.environ[key] = json.dumps(value, default=str)
         else:
             self._overrides.pop(key, None)
             original = self._env_dict.get(key)
