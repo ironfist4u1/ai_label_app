@@ -17,7 +17,7 @@ def render_sidebar() -> SidebarConfig:
 
         st.divider()
         st.subheader("Execution Mode")
-        deep_dive = st.checkbox("Enable Deep Dive Mode", value=False)
+        deep_dive = st.checkbox("Enable Deep Dive Mode", value=True)
         batch_mode = st.checkbox("Enable Batch Upload Mode", value=False)
         image_processing = st.checkbox("Enable Image Processing", value=False)
 
