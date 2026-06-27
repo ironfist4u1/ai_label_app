@@ -1,13 +1,19 @@
 import logging
 import streamlit as st
 from datatypes import ComplianceReport
+from functools import lru_cache
 
 logger = logging.getLogger("UI.Results")
-_LABEL_LOOKUP: dict = {c["id"]: c["label"] for c in st.session_state.active_checks_list}
+
+
+@lru_cache(1)
+def get_default_labels() -> dict:
+    return {c["id"]: c["label"] for c in st.session_state.active_checks_list}
 
 
 def render_results(report: ComplianceReport) -> None:
     """Purely renders the compliance report output without managing state or actions."""
+    _LABEL_LOOKUP: dict = get_default_labels()
     if not report.is_legible:
         st.error(f"**Image Rejected:** {report.legibility_remarks}")
         return
