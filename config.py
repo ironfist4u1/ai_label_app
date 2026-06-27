@@ -44,11 +44,37 @@ class Config:
 
     @classmethod
     def _load_env(cls):
-        """Load .env file once and create the namedtuple."""
-        cls._env_dict = dotenv_values(".env")
+        """Load configuration from .env file, Streamlit secrets, and system environment variables."""
+        cls._env_dict = {}
 
-        # Create namedtuple with dynamic fields
-        field_names = list(cls._env_dict.keys())
+        # 1. Load local .env file values if available
+        try:
+            cls._env_dict.update(dotenv_values(".env"))
+        except Exception:
+            pass
+
+        # 2. Layer in Streamlit Secrets if running in Streamlit Cloud
+        try:
+            import streamlit as st
+
+            for key in st.secrets:
+                val = st.secrets[key]
+                # Filter out nested tables/sections if any, keep primitive configurations
+                if isinstance(val, (str, int, float, bool)):
+                    cls._env_dict[key] = str(val)
+        except Exception:
+            # Fail silently if not running inside a Streamlit context
+            pass
+
+        # 3. Fallback to system environment variables for explicitly expected uppercase config keys
+        for key, val in os.environ.items():
+            if key.isupper() and key not in cls._env_dict:
+                cls._env_dict[key] = val
+
+        # 4. Strict Safety Filter: namedtuple requires keys to be valid Python identifiers
+        # This prevents system variables (e.g. variables with hyphens) from crashing the app.
+        field_names = [k for k in cls._env_dict.keys() if k.isidentifier()]
+        cls._env_dict = {k: cls._env_dict[k] for k in field_names}
 
         EnvTuple = namedtuple(
             typename="EnvConfigTuple",
